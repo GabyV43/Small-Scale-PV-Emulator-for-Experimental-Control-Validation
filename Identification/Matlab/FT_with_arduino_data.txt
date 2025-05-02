@@ -1,0 +1,79 @@
+% Caminho do arquivo onde os dados estão salvos
+caminho_arquivo = 'C:\Users\vitor\OneDrive\Documents\gaby_IC\Painel\dados_painel.csv';
+
+% Ler o arquivo CSV, ignorando o cabeçalho
+fid = fopen(caminho_arquivo, 'r'); % Abrir o arquivo
+fgetl(fid); % Ignorar a primeira linha (cabeçalho)
+dados = fscanf(fid, '%f,%f,%f', [3, Inf]); % Ler os dados numéricos
+fclose(fid); % Fechar o arquivo
+
+% Transpor os dados (pois fscanf lê por colunas)
+dados = dados';
+
+% Separar as colunas de dados
+tempo = dados(:, 1); % Tempo em segundos
+u = dados(:, 2);     % Sinal de entrada (degrau aplicado)
+y = dados(:, 3);     % Sinal de saída (tensão do painel solar)
+
+% Configurações do degrau
+duracao_degrau = 10; % Duração de cada degrau (segundos)
+num_degraus = floor(max(tempo) / duracao_degrau); % Número de degraus
+
+% Inicializar variáveis para guardar os ganhos e tempos de resposta
+ganhos = [];
+tempos_resposta = [];
+
+% Iterar sobre cada degrau
+for i = 1:num_degraus
+    % Intervalo de tempo do degrau atual
+    t_inicio = (i - 1) * duracao_degrau;
+    t_fim = i * duracao_degrau;
+    
+    % Índices correspondentes ao intervalo
+    idx_intervalo = find(tempo >= t_inicio & tempo < t_fim);
+    
+    % Extrair os dados de entrada e saída para este intervalo
+    u_atual = mean(u(idx_intervalo)); % Nível médio do degrau (degrau constante)
+    y_resposta = y(idx_intervalo); % Resposta correspondente
+    t_resposta = tempo(idx_intervalo);
+    
+    % Calcular o ganho estacionário (diferença entre entrada e saída)
+    y_estacionario = mean(y_resposta(end-10:end)); % Média dos últimos valores
+    ganho = y_estacionario / u_atual;
+    ganhos = [ganhos; ganho]; % Armazenar o ganho
+    
+    % Estimar o tempo de resposta (tempo para atingir 90% do valor final)
+    y_90 = 0.9 * y_estacionario;
+    idx_90 = find(y_resposta >= y_90, 1);
+    if ~isempty(idx_90)
+        tempo_resposta = t_resposta(idx_90) - t_resposta(1);
+    else
+        tempo_resposta = NaN; % Caso não atinja o valor
+    end
+    tempos_resposta = [tempos_resposta; tempo_resposta];
+    
+    % Exibir resultados para este degrau
+    fprintf('Degrau %d:\n', i);
+    fprintf('  Entrada: %.2f V\n', u_atual);
+    fprintf('  Ganho: %.2f\n', ganho);
+    fprintf('  Tempo de resposta: %.2f s\n', tempo_resposta);
+end
+
+% Plotar gráficos separados
+figure;
+plot(tempo, u, 'b', 'LineWidth', 1.5);
+title('Degrau aplicado (Entrada)', 'FontSize', 14);
+xlabel('Tempo (segundos)', 'FontSize', 12);
+ylabel('u (V)', 'FontSize', 12);
+grid on;
+
+figure;
+plot(tempo, y, 'r', 'LineWidth', 1.5);
+title('Tensão de saída', 'FontSize', 14);
+xlabel('Tempo (segundos)', 'FontSize', 12);
+ylabel('y (V)', 'FontSize', 12);
+grid on;
+
+% Exibir resultados finais
+disp('Resultados para cada degrau:');
+table((1:length(ganhos))', ganhos, tempos_resposta, 'VariableNames', {'Degrau', 'Ganho', 'TempoResposta'})
