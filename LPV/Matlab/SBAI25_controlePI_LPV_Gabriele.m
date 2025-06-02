@@ -1,6 +1,6 @@
 %--------------------------------------------------------------------------
 %% Controle PI LPV
-% Marcelo MENEZES MORATO  
+% Marcelo MENEZES MORATO && Gabriele Lanzoni Mueller
 % 29/11/2024
 %--------------------------------------------------------------------------
 yalmip('clear');
